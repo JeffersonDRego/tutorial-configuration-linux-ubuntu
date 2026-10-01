@@ -1,15 +1,13 @@
-# 🖥️ Guia: VPS com Ubuntu 24.04 LTS + EasyPanel
+# 🖥️ Guia: VPS com Ubuntu 26.04 LTS
 
-> Guia completo de instalação, configuração de segurança e manutenção de uma VPS na Locaweb usando Ubuntu 24.04 LTS com EasyPanel.
-
----
+> Guia completo de instalação, configuração de segurança e manutenção de uma VPS usando Ubuntu LTS.
 
 ## 📌 Índice
 
-1. [O que é Cloud-Init?](#o-que-é-cloud-init)
-2. [A instalação automática (Locaweb + EasyPanel)](#a-instalação-automática)
-3. [Acessando o servidor pela primeira vez](#acessando-o-servidor-pela-primeira-vez)
-4. [Pós-instalação: segurança em ordem](#pós-instalação-segurança-em-ordem)
+1. [O que é Cloud-Init?](#1-o-que-é-cloud-init)
+2. [Instalação do Sistema Operacional](#2-instalação-do-sistema-operacional)
+3. [Acessando o servidor pela primeira vez](#3-acessando-o-servidor-pela-primeira-vez)
+4. [Pós-instalação: segurança em ordem](#4-pós-instalação-segurança-em-ordem)
    - [Atualizar o sistema](#1-atualizar-o-sistema-faça-isso-primeiro)
    - [Criar usuário não-root](#2-criar-um-usuário-não-root)
    - [Configurar o firewall (UFW)](#3-configurar-o-firewall-ufw--siga-a-ordem-exata)
@@ -17,39 +15,37 @@
    - [Trocar a porta do SSH](#5-trocar-a-porta-do-ssh-opcional-mas-recomendado)
    - [Configurar Chave SSH e desativar senhas](#6-configurar-autenticação-por-chave-ssh-e-desativar-senhas)
    - [Instalar Fail2Ban](#7-configurar-fail2ban-proteção-ativa)
-5. [Manutenção: como manter o servidor atualizado](#manutenção-como-manter-o-servidor-atualizado)
-6. [Auditoria e Testes de Segurança (Nmap e Lynis)](#-auditoria-e-testes-de-segurança)
-7. [Vulnerabilidades conhecidas no Ubuntu 24.04...](#vulnerabilidades-conhecidas...)
+5. [Manutenção: como manter o servidor atualizado](#5-manutenção-como-manter-o-servidor-atualizado)
+6. [Auditoria e Testes de Segurança (Nmap e Lynis)](#6-auditoria-e-testes-de-segurança)
+7. [Monitorando Vulnerabilidades no Ubuntu 26.04 LTS](#7-monitorando-vulnerabilidades-no-ubuntu-2604-lts)
 
 ---
 
-## O que é Cloud-Init?
+## 1. O que é Cloud-Init?
 
-**Cloud-Init** é um script que roda automaticamente na **primeira inicialização** da VPS, antes de você sequer fazer login. Pense nele como um "setup automático" que a máquina executa sozinha logo que liga.
+**Cloud-Init** é o padrão da indústria usado por praticamente todos os provedores de cloud (AWS, DigitalOcean, Hetzner, Hostinger, etc.) para inicializar e configurar uma máquina virtual no seu primeiro boot de forma automatizada. Pense nele como um "setup automático" que a máquina executa sozinha logo que liga.
 
-Com ele você pode criar usuários, instalar pacotes, configurar o firewall — tudo de forma automatizada e sem intervenção manual.
+Quando você seleciona opções de instalação com "1-clique" no painel do seu provedor (como "Ubuntu + Docker" ou "Ubuntu + Painel Web"), o que acontece nos bastidores é o Cloud-Init em ação. O provedor sobe uma imagem limpa do Ubuntu e injeta um script invisível que cria usuários, cadastra chaves SSH, atualiza o sistema e instala as ferramentas escolhidas.
 
-**No seu caso: você não precisa usar isso.** A instalação da Locaweb com EasyPanel já vai cuidar do setup inicial automaticamente. A opção existe para casos avançados onde você quer personalizar a máquina desde o primeiro boot.
+**Pode ser o seu caso:** se você usou uma dessas imagens pré-configuradas oferecidas pelo seu provedor, grande parte do setup inicial já foi feito automaticamente nos primeiros minutos em que a máquina ligou.
 
----
-
-## A instalação automática
-
-Ao escolher **EasyPanel com Ubuntu 24.04 LTS** no painel da Locaweb, o provedor vai:
-
-1. Instalar o Ubuntu 24.04 LTS limpo
-2. Rodar o script oficial do EasyPanel automaticamente
-3. Deixar o painel acessível via `http://IP_DA_SUA_VPS:3000`
-
-> ✅ Essa é a melhor opção para você agora. Avance com ela.
+No entanto, o foco deste guia é ensinar a configuração de uma **VPS Ubuntu limpa**. O objetivo é tirar a "caixa preta" da jogada e te dar controle total. Fazendo isso manualmente, você entende exatamente quais portas estão abertas, quais usuários existem e como o firewall está operando desde o segundo zero.
 
 ---
 
-## Acessando o servidor pela primeira vez
+## 2. Instalação do Sistema Operacional
+
+Ao criar sua VPS em provedores de cloud, escolha a imagem limpa do **Ubuntu 26.04 LTS**.
+
+> ✅ Essa é a base ideal para começar a configurar seu ambiente de produção de forma segura, com suporte de longo prazo.
+
+---
+
+## 3. Acessando o servidor pela primeira vez
 
 Você vai acessar a VPS via **SSH** — é como o terminal da sua máquina, mas conectado remotamente ao servidor.
 
-A Locaweb vai te fornecer o **IP da VPS** e você usará a **senha que cadastrou** durante a instalação.
+O seu provedor de cloud vai te fornecer o **IP da VPS** e a **credencial de acesso** (senha ou chave SSH) gerada durante a criação da máquina.
 
 ```bash
 ssh root@IP_DA_SUA_VPS
@@ -61,7 +57,7 @@ Na primeira conexão, o terminal vai perguntar se você confia no servidor. Resp
 
 ---
 
-## Pós-instalação: segurança em ordem
+## 4. Pós-instalação: segurança em ordem
 
 > 💡 **Sobre o `sudo`:** os comandos abaixo assumem que você está logado como **root** (logo após a primeira conexão). Depois de criar seu usuário não-root e trocar para ele, todos os comandos que modificam o sistema precisam do prefixo `sudo`. Regra simples:
 > - Comando que **lê** algo → sem sudo (ex: `ufw status`)
@@ -73,7 +69,7 @@ Na primeira conexão, o terminal vai perguntar se você confia no servidor. Resp
 
 Esse é o **primeiro comando que você deve rodar em qualquer servidor novo**, sem exceção. A imagem usada na instalação pode estar desatualizada — este comando aplica todos os patches de segurança disponíveis.
 
-> ⚠️ Durante o `apt upgrade`, pode aparecer uma tela roxa perguntando o que fazer com o arquivo `sshd_config` modificado. Selecione **"manter a versão local atualmente instalada"** — a instalação automática já configurou o SSH corretamente e você não quer sobrescrever isso.
+> ⚠️ Durante o `apt upgrade`, pode aparecer uma tela perguntando o que fazer com configurações modificadas. Na dúvida, selecione **"manter a versão local atualmente instalada"**.
 
 ```bash
 apt update && apt upgrade -y
@@ -116,7 +112,7 @@ su - seuusuario
 
 ### 3. Configurar o firewall (UFW) — siga a ordem exata
 
-> ⚠️ **ATENÇÃO: ordem importa aqui.** Se você ativar o firewall ANTES de liberar a porta do SSH, vai perder o acesso ao servidor e terá que usar o console de emergência da Locaweb para recuperar.
+> ⚠️ **ATENÇÃO: ordem importa aqui.** Se você ativar o firewall ANTES de liberar a porta do SSH, vai perder o acesso ao servidor e terá que usar o console de emergência do seu provedor para recuperar.
 
 **Siga exatamente esta sequência:**
 
@@ -124,13 +120,13 @@ su - seuusuario
 ```bash
 sudo ufw allow ssh
 ```
-> Isso libera a porta 22 (SSH padrão). Se aparecer "Skipping adding existing rule", é porque a instalação automática já criou essa regra — tudo certo, continue.
+> Isso libera a porta 22 (SSH padrão).
 
-**Passo 2 — Libere as portas necessárias para o EasyPanel:**
+**Passo 2 — Libere as portas necessárias para a sua aplicação:**
 ```bash
-sudo ufw allow 3000   # Painel do EasyPanel
 sudo ufw allow 80     # HTTP
 sudo ufw allow 443    # HTTPS
+# Adicione outras portas específicas que sua aplicação precisar
 ```
 
 **Passo 3 — SÓ AGORA ative o firewall:**
@@ -151,7 +147,6 @@ Status: active
 To                         Action      From
 --                         ------      ----
 22/tcp                     ALLOW       Anywhere
-3000/tcp                   ALLOW       Anywhere
 80/tcp                     ALLOW       Anywhere
 443/tcp                    ALLOW       Anywhere
 ```
@@ -159,12 +154,10 @@ To                         Action      From
 > ✅ Se o SSH (porta 22) aparece na lista como ALLOW, você está seguro. O firewall está ativo e você não perdeu o acesso.
 
 **Passo 5 — Se aparecerem regras duplicadas, limpe:**
-
-A instalação automática pode ter criado regras que se somam às que você adicionou, deixando duplicatas (ex: porta 80 aparecendo duas vezes — uma com `/tcp` e uma sem). Isso não causa problema de segurança, mas é bom manter organizado:
+Dependendo da instalação, podem haver regras duplicadas (ex: porta 80 aparecendo duas vezes — uma com `/tcp` e uma sem). Isso não causa problema de segurança, mas é bom manter organizado:
 
 ```bash
 # Remove as entradas duplicadas (sem /tcp)
-sudo ufw delete allow 3000
 sudo ufw delete allow 80
 sudo ufw delete allow 443
 
@@ -185,9 +178,7 @@ sudo dpkg-reconfigure --priority=low unattended-upgrades
 
 Na tela interativa que aparecer, selecione **"Yes"**.
 
-**Por que Yes é a escolha certa aqui:** o `unattended-upgrades` não instala tudo — ele aplica apenas patches do repositório `security`, que são exclusivamente correções de vulnerabilidades já validadas pela Canonical. Não são versões novas de software, não quebram funcionalidades. Uma vulnerabilidade crítica descoberta hoje pode estar sendo explorada ativamente — cada dia sem o patch é um dia de risco desnecessário.
-
-Isso vai aplicar **patches de segurança automaticamente** em segundo plano, sem te incomodar e sem derrubar serviços.
+**Por que Yes é a escolha certa aqui:** o `unattended-upgrades` não instala tudo — ele aplica apenas patches do repositório `security`, que são exclusivamente correções de vulnerabilidades já validadas. Não são versões novas de software, não quebram funcionalidades. Uma vulnerabilidade crítica descoberta hoje pode estar sendo explorada ativamente — cada dia sem o patch é um dia de risco desnecessário.
 
 ---
 
@@ -213,7 +204,7 @@ sudo ufw allow 2222
 
 **Passo 4 — Reinicie o SSH:**
 
-> ⚠️ **Atenção — Ubuntu 24.04 usa socket activation.** Nesta versão, o SSH é gerenciado pelo systemd via socket, então apenas `systemctl restart ssh` não é suficiente. Você precisa rodar os dois comandos abaixo:
+> ⚠️ **Atenção — Socket Activation.** Nas versões mais recentes do Ubuntu, o SSH é gerenciado pelo systemd via socket, então apenas `systemctl restart ssh` não é suficiente. Você precisa rodar os dois comandos abaixo:
 
 ```bash
 sudo systemctl daemon-reload
@@ -226,8 +217,6 @@ ssh -p 2222 seuusuario@IP_DA_SUA_VPS
 ```
 
 > ⚠️ Só feche a sessão antiga depois de confirmar que a nova funciona. Se algo der errado, você ainda tem a sessão aberta para corrigir.
->
-> 💡 Testar ANTES do restart vai dar timeout — isso é normal. A porta 2222 só responde depois que o serviço é reiniciado.
 
 **Passo 6 — Após confirmar que funciona, remova a porta 22 do firewall:**
 ```bash
@@ -242,116 +231,88 @@ ssh -p 2222 seuusuario@IP_DA_SUA_VPS
 
 ---
 
-## Manutenção: como manter o servidor atualizado
+## 5. Manutenção: como manter o servidor atualizado
 
 ### Verificar o que está disponível para atualizar
 ```bash
-apt update
-apt list --upgradable
+sudo apt update
+sudo apt list --upgradable
 ```
 
 ### Aplicar todas as atualizações
 ```bash
-apt upgrade -y
-```
-
-### Atualizar pacotes de sistema mais profundos (ocasionalmente)
-```bash
-apt full-upgrade -y
+sudo apt upgrade -y
 ```
 
 ### Limpar pacotes antigos e cache desnecessário
 ```bash
-apt autoremove -y && apt autoclean
+sudo apt autoremove -y && sudo apt autoclean
 ```
 
 ### Verificar se o servidor precisa ser reiniciado após updates
 ```bash
 cat /var/run/reboot-required
 ```
-> Se esse arquivo existir, é porque uma atualização de kernel foi aplicada e requer reboot. Agende para um momento de baixo tráfego.
+> Se esse arquivo existir, é porque uma atualização crítica (como de kernel) foi aplicada e requer reboot. Agende para um momento de baixo tráfego.
 
-**Frequência recomendada:** semanalmente. Ou imediatamente sempre que você ouvir sobre uma vulnerabilidade crítica no Linux.
+**Frequência recomendada:** semanalmente, ou sempre que sair uma notícia grave sobre segurança em servidores Linux.
 
 ---
 
-## 🛡️ Auditoria e Testes de Segurança
+## 6. Auditoria e Testes de Segurança
 
-Para garantir que o servidor está realmente protegido e que nenhuma porta indesejada foi exposta externamente (especialmente por regras automáticas do Docker/EasyPanel), execute os testes abaixo.
+Para garantir que o servidor está protegido e que nenhuma porta indesejada foi exposta externamente (especialmente por regras automáticas de ferramentas como Docker), execute os testes abaixo.
 
 ### 1. Varredura de Portas Externa (Executar na máquina local)
-Utilize o **Nmap** em seu ambiente local para escanear a VPS. O objetivo é validar que o firewall está descartando requisições nas portas invisíveis.
+Utilize o **Nmap** em seu ambiente local para escanear a VPS.
 
 ```bash
-# Instale nmap no seu S.O.
+# Instale nmap no seu S.O. local
 sudo apt install nmap -y
-```
 
-```bash
 # Varredura furtiva completa em todas as 65.535 portas
 sudo nmap -sS -Pn -p- IP_DA_SUA_VPS
 ```
-Resultado esperado: Apenas as portas de produção (80, 443), a porta administrativa do EasyPanel (3000) e a nova porta SSH (2222) devem constar como open. Todas as demais devem constar como filtered (no-response).
+**Resultado esperado:** Apenas as portas de produção (ex: 80, 443) e a nova porta SSH (2222) devem constar como `open`. Todas as demais devem constar como `filtered` (no-response).
 
 ### 2. Auditoria Interna do Sistema (Executar dentro da VPS)
-
-O Lynis é uma ferramenta de auditoria de segurança para sistemas Linux que analisa configurações incorretas, permissões de arquivos e atualizações pendentes.
+O Lynis é uma excelente ferramenta para analisar configurações incorretas e permissões de arquivos.
 
 ```bash
 sudo apt install lynis -y
 sudo lynis audit system
 ```
+Foque em corrigir os avisos em vermelho (WARNING) do relatório gerado.
 
-Uso: Analise o relatório gerado no terminal. Foque em corrigir os avisos em vermelho (WARNING) e analise as sugestões (SUGGESTIONS) para blindar ainda mais o kernel e os binários do sistema.
-
-
----
-
-### ⚠️ Nota importante sobre o Docker vs UFW (Dica de Atenção)
-Caso queira deixar um aviso explícito sobre o comportamento do Docker no guia para não esquecer no futuro, você pode colocar este bloco de texto logo abaixo da seção do EasyPanel:
-
-```markdown
-> ⚠️ **Aviso de Atenção sobre Docker & Firewall:** O Docker manipula o `iptables` diretamente e ignora as regras padrão do UFW. Ao subir serviços no EasyPanel, certifique-se de não expor portas de bancos de dados (como 5432, 3306) diretamente para o Host (0.0.0.0). Deixe que o Proxy interno do painel realize o roteamento pelas portas públicas padrão (80/443).
-```
+> ⚠️ **Aviso de Atenção sobre Docker & Firewall:** O Docker manipula o `iptables` diretamente e ignora as regras padrão do UFW. Ao subir serviços em contêineres Docker, certifique-se de não expor portas de bancos de dados (como 5432, 3306) diretamente para o Host (`0.0.0.0`). Deixe que proxies reversos realizem o roteamento pelas portas públicas padrão (80/443).
 
 ---
 
-## Vulnerabilidades conhecidas no Ubuntu 24.04 LTS
+## 7. Monitorando Vulnerabilidades no Ubuntu 26.04 LTS
 
-O Ubuntu 24.04 LTS é uma versão LTS (Long Term Support) — ou seja, receberá suporte e patches de segurança até **abril de 2029**. Isso é ótimo para um servidor de produção.
+O Ubuntu 26.04 LTS é uma versão de Long Term Support, o que significa que receberá atualizações de manutenção e patches de segurança contínuos até **abril de 2031**.
 
-Porém, como todo sistema ativo, ele possui CVEs (vulnerabilidades catalogadas). As mais relevantes recentemente:
+Por ser um sistema altamente moderno, ele já compila seus binários principais com camadas extras de proteção (como `FORTIFY_SOURCE=3`), mitigando proativamente classes inteiras de ataques, como buffer overflows.
 
-| CVE | Severidade | Descrição | Status |
-|-----|-----------|-----------|--------|
-| CVE-2026-3888 | Alta (7.8) | Escalada de privilégio local via `snap-confine` + `systemd-tmpfiles`. Um usuário local comum pode virar root. | ✅ Corrigido via `apt upgrade` |
-| CVE-2025-32462/32463 | Alta | Falhas críticas no `sudo` permitindo escalada de privilégio local. | ✅ Corrigido via `apt upgrade` |
-| CVE-2025-38352 | Média | Falha no kernel Linux que pode causar crash ou escalada de privilégio. | ✅ Corrigido via `apt upgrade` |
+Ainda assim, vulnerabilidades (CVEs) são descobertas regularmente na comunidade de software livre. A maioria dessas falhas em ambientes de servidor costuma ser de **escalada de privilégio local** — ou seja, o atacante já precisaria ter algum acesso inicial restrito à máquina para conseguir se tornar `root`.
 
-> 💡 **Traduzindo:** a maioria dessas falhas são de "escalada de privilégio local" — ou seja, um atacante precisaria **já estar dentro da sua máquina** com um usuário comum para explorá-las. Em uma VPS bem configurada com acesso restrito, o risco real é baixo. Mesmo assim, mantenha o sistema atualizado.
+### Como manter a segurança em dia:
 
-### Ponto positivo do 24.04 LTS
-
-Esta versão foi compilada com proteções mais rígidas que as anteriores. Usa `FORTIFY_SOURCE=3` (vs. `=2` do 22.04), o que aumenta significativamente a detecção e mitigação de buffer overflow — uma das formas mais comuns de exploração.
-
-### Como monitorar novas vulnerabilidades
-
-- Site oficial: https://ubuntu.com/security/notices
-- CVEs ativos: https://ubuntu.com/security/cves
+1. **Confie no `unattended-upgrades`**: Como configuramos no passo 4, ele garantirá que correções críticas validadas pela Canonical cheguem ao seu servidor quase imediatamente.
+2. **Monitore fontes oficiais**:
+   - Notícias de Segurança: https://ubuntu.com/security/notices
+   - Base de Dados de CVEs: https://ubuntu.com/security/cves
 
 ---
 
 ## ✅ Checklist do Dia 1
 
 ```
-[ ] Acessar via SSH com a senha cadastrada na Locaweb
+[ ] Acessar via SSH com a credencial do provedor
       ssh root@IP_DA_VPS
-
-[ ] Na primeira conexão, responder "yes" para confiar no servidor
 
 [ ] Atualizar o sistema
       apt update && apt upgrade -y
-      (Se aparecer tela do sshd_config → "manter a versão local")
 
 [ ] Reiniciar e reconectar
       reboot
@@ -360,21 +321,18 @@ Esta versão foi compilada com proteções mais rígidas que as anteriores. Usa 
       adduser seuusuario
       usermod -aG sudo seuusuario
       su - seuusuario
-      (A partir daqui, use sudo em todos os comandos que modificam o sistema)
 
 [ ] Configurar firewall — NESSA ORDEM:
       sudo ufw allow ssh       ← SSH PRIMEIRO, sempre
-      sudo ufw allow 3000      ← EasyPanel
       sudo ufw allow 80        ← HTTP
       sudo ufw allow 443       ← HTTPS
       sudo ufw enable          ← SÓ ENTÃO ativar
-      sudo ufw status          ← confirmar que 22/tcp aparece como ALLOW
-      (Se houver duplicatas, limpar com sudo ufw delete allow 80/443/3000)
+      sudo ufw status          
 
 [ ] Configurar unattended-upgrades
       sudo apt install unattended-upgrades -y
       sudo dpkg-reconfigure --priority=low unattended-upgrades
-      (Selecionar "Yes" na tela interativa)
+      (Selecionar "Yes")
 
 [ ] Trocar porta do SSH para 2222
       sudo nano /etc/ssh/sshd_config  → Port 2222
@@ -384,20 +342,18 @@ Esta versão foi compilada com proteções mais rígidas que as anteriores. Usa 
       (Testar em nova janela: ssh -p 2222 seuusuario@IP)
       sudo ufw delete allow ssh
 
-[ ] Acessar EasyPanel em http://IP_DA_VPS:3000 e finalizar configuração
-
 [ ] Configurar autenticação por Chave SSH e desativar senhas
-      # Na sua máquina local (ex: WSL, Linux ou Terminal Mac):
+      # Na sua máquina local:
       ssh-keygen -t ed25519
       ssh-copy-id -p 2222 seuusuario@IP_DA_VPS
       
-      # Acesse a VPS e desative o login por senha tradicional:
+      # Na VPS:
       sudo nano /etc/ssh/sshd_config
       → Mudar PasswordAuthentication para no
       → Mudar PermitRootLogin para no
       
       sudo systemctl restart ssh.socket
-      (ATENÇÃO: Não feche o terminal atual! Abra uma nova janela e teste o acesso `ssh -p 2222 seuusuario@IP` para garantir que a chave funciona antes de deslogar)
+      (ATENÇÃO: Teste em nova janela antes de fechar a atual)
 
 [ ] Configurar Fail2Ban (Proteção ativa contra força bruta)
       sudo apt install fail2ban -y
@@ -410,11 +366,8 @@ Esta versão foi compilada com proteções mais rígidas que as anteriores. Usa 
 
 ---
 
-
-
 ## 🔗 Referências
 
-- [Documentação oficial do EasyPanel](https://easypanel.io/docs)
 - [Ubuntu Security Notices](https://ubuntu.com/security/notices)
-- [Ubuntu 24.04 LTS Release Notes](https://documentation.ubuntu.com/release-notes/24.04/)
+- [Ubuntu 26.04 LTS Release Notes](https://documentation.ubuntu.com/release-notes/26.04/)
 - [Guia UFW no Ubuntu](https://help.ubuntu.com/community/UFW)
